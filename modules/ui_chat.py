@@ -132,25 +132,6 @@ def create_chat_settings_ui():
             with gr.Column():
                 shared.gradio['load_chat_history'] = gr.File(type='binary', file_types=['.json', '.txt'], label='Upload History JSON')
 
-    with gr.Tab('Upload character'):
-        with gr.Tab('YAML or JSON'):
-            with gr.Row():
-                shared.gradio['upload_json'] = gr.File(type='binary', file_types=['.json', '.yaml'], label='JSON or YAML File', interactive=not mu)
-                shared.gradio['upload_img_bot'] = gr.Image(type='pil', label='Profile Picture (optional)', interactive=not mu)
-
-            shared.gradio['Submit character'] = gr.Button(value='Submit', interactive=False)
-
-        with gr.Tab('TavernAI PNG'):
-            with gr.Row():
-                with gr.Column():
-                    shared.gradio['upload_img_tavern'] = gr.Image(type='pil', label='TavernAI PNG File', elem_id='upload_img_tavern', interactive=not mu)
-                    shared.gradio['tavern_json'] = gr.State()
-                with gr.Column():
-                    shared.gradio['tavern_name'] = gr.Textbox(value='', lines=1, label='Name', interactive=False)
-                    shared.gradio['tavern_desc'] = gr.Textbox(value='', lines=4, max_lines=4, label='Description', interactive=False)
-
-            shared.gradio['Submit tavern character'] = gr.Button(value='Submit', interactive=False)
-
 
 def create_event_handlers():
 
@@ -311,18 +292,6 @@ def create_event_handlers():
         lambda x: json.dumps(x, indent=4), gradio('history'), gradio('temporary_text')).then(
         None, gradio('temporary_text', 'character_menu', 'mode'), None, _js=f'(hist, char, mode) => {{{ui.save_files_js}; saveHistory(hist, char, mode)}}')
 
-    shared.gradio['Submit character'].click(
-        chat.upload_character, gradio('upload_json', 'upload_img_bot'), gradio('character_menu')).then(
-        lambda: None, None, None, _js=f'() => {{{ui.switch_tabs_js}; switch_to_character()}}')
-
-    shared.gradio['Submit tavern character'].click(
-        chat.upload_tavern_character, gradio('upload_img_tavern', 'tavern_json'), gradio('character_menu')).then(
-        lambda: None, None, None, _js=f'() => {{{ui.switch_tabs_js}; switch_to_character()}}')
-
-    shared.gradio['upload_json'].upload(lambda: gr.update(interactive=True), None, gradio('Submit character'))
-    shared.gradio['upload_json'].clear(lambda: gr.update(interactive=False), None, gradio('Submit character'))
-    shared.gradio['upload_img_tavern'].upload(chat.check_tavern_character, gradio('upload_img_tavern'), gradio('tavern_name', 'tavern_desc', 'tavern_json', 'Submit tavern character'), show_progress=False)
-    shared.gradio['upload_img_tavern'].clear(lambda: (None, None, None, gr.update(interactive=False)), None, gradio('tavern_name', 'tavern_desc', 'tavern_json', 'Submit tavern character'), show_progress=False)
     shared.gradio['your_picture'].change(
         chat.upload_your_profile_picture, gradio('your_picture'), None).then(
         partial(chat.redraw_html, reset_cache=True), gradio(reload_arr), gradio('display'))
@@ -334,10 +303,6 @@ def create_event_handlers():
     shared.gradio['send_instruction_to_notebook'].click(
         prompts.load_instruction_prompt_simple, gradio('instruction_template'), gradio('textbox-notebook')).then(
         lambda: None, None, None, _js=f'() => {{{ui.switch_tabs_js}; switch_to_notebook()}}')
-
-    shared.gradio['send_instruction_to_negative_prompt'].click(
-        prompts.load_instruction_prompt_simple, gradio('instruction_template'), gradio('negative_prompt')).then(
-        lambda: None, None, None, _js=f'() => {{{ui.switch_tabs_js}; switch_to_generation_parameters()}}')
 
     shared.gradio['send-chat-to-default'].click(
         ui.gather_interface_values, gradio(shared.input_elements), gradio('interface_state')).then(

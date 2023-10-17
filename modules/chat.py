@@ -12,12 +12,10 @@ import yaml
 from PIL import Image
 
 import modules.shared as shared
-from modules.extensions import apply_extensions
 from modules.html_generator import chat_html_wrapper, make_thumbnail
 from modules.logging_colors import logger
 from modules.text_generation import (
     generate_reply,
-    get_encoded_length,
     get_max_prompt_length
 )
 from modules.utils import (
@@ -97,10 +95,9 @@ def generate_chat_prompt(user_input, state, **kwargs):
         if impersonate:
             wrapper += substrings['user_turn_stripped'].rstrip(' ')
         elif _continue:
-            wrapper += apply_extensions('bot_prefix', substrings['bot_turn_stripped'], state)
+            wrapper += substrings['bot_turn_stripped']
             wrapper += history[-1][1]
-        else:
-            wrapper += apply_extensions('bot_prefix', substrings['bot_turn_stripped'].rstrip(' '), state)
+            wrapper += substrings['user_turn_stripped'].rstrip(' ')
     else:
         wrapper = '<|prompt|>'
 
@@ -117,7 +114,7 @@ def generate_chat_prompt(user_input, state, **kwargs):
     rows = [context]
     min_rows = 3
     i = len(history) - 1
-    while i >= 0 and get_encoded_length(wrapper.replace('<|prompt|>', ''.join(rows))) < max_length:
+    while i >= 0:
         if _continue and i == len(history) - 1:
             if state['mode'] != 'chat-instruct':
                 rows.insert(1, substrings['bot_turn_stripped'] + history[i][1].strip())
@@ -143,10 +140,10 @@ def generate_chat_prompt(user_input, state, **kwargs):
 
         # Add the character prefix
         if state['mode'] != 'chat-instruct':
-            rows.append(apply_extensions('bot_prefix', substrings['bot_turn_stripped'].rstrip(' '), state))
+            rows.append(substrings['bot_turn_stripped'].rstrip(' '))
 
-    while len(rows) > min_rows and get_encoded_length(wrapper.replace('<|prompt|>', ''.join(rows))) >= max_length:
-        rows.pop(1)
+    #while len(rows) > min_rows:
+    #    rows.pop(1)
 
     prompt = wrapper.replace('<|prompt|>', ''.join(rows))
     if also_return_rows:
@@ -186,8 +183,6 @@ def get_stopping_strings(state):
 def chatbot_wrapper(text, state, regenerate=False, _continue=False, loading_message=True):
     history = state['history']
     output = copy.deepcopy(history)
-    output = apply_extensions('history', output)
-    state = apply_extensions('state', state)
     if shared.model_name == 'None' or shared.model is None:
         logger.error("No model is loaded! Select one in the Model tab.")
         yield output
@@ -201,10 +196,6 @@ def chatbot_wrapper(text, state, regenerate=False, _continue=False, loading_mess
     # Prepare the input
     if not any((regenerate, _continue)):
         visible_text = html.escape(text)
-
-        # Apply extensions
-        text, visible_text = apply_extensions('chat_input', text, visible_text, state)
-        text = apply_extensions('input', text, state, is_chat=True)
 
         # *Is typing...*
         if loading_message:
@@ -228,9 +219,7 @@ def chatbot_wrapper(text, state, regenerate=False, _continue=False, loading_mess
         '_continue': _continue,
         'history': output,
     }
-    prompt = apply_extensions('custom_generate_chat_prompt', text, state, **kwargs)
-    if prompt is None:
-        prompt = generate_chat_prompt(text, state, **kwargs)
+    prompt = generate_chat_prompt(text, state, **kwargs)
 
     # Generate
     reply = None
@@ -241,7 +230,6 @@ def chatbot_wrapper(text, state, regenerate=False, _continue=False, loading_mess
         visible_reply = html.escape(visible_reply)
 
         if shared.stop_everything:
-            output['visible'][-1][1] = apply_extensions('output', output['visible'][-1][1], state, is_chat=True)
             yield output
             return
 
@@ -262,7 +250,6 @@ def chatbot_wrapper(text, state, regenerate=False, _continue=False, loading_mess
             if is_stream:
                 yield output
 
-    output['visible'][-1][1] = apply_extensions('output', output['visible'][-1][1], state, is_chat=True)
     yield output
 
 
@@ -354,7 +341,7 @@ def replace_last_reply(text, state):
         return history
     elif len(history['visible']) > 0:
         history['visible'][-1][1] = html.escape(text)
-        history['internal'][-1][1] = apply_extensions('input', text, state, is_chat=True)
+        history['internal'][-1][1] = text
 
     return history
 
@@ -362,7 +349,7 @@ def replace_last_reply(text, state):
 def send_dummy_message(text, state):
     history = state['history']
     history['visible'].append([html.escape(text), ''])
-    history['internal'].append([apply_extensions('input', text, state, is_chat=True), ''])
+    history['internal'].append([text, ''])
     return history
 
 
@@ -373,7 +360,7 @@ def send_dummy_reply(text, state):
         history['internal'].append(['', ''])
 
     history['visible'][-1][1] = html.escape(text)
-    history['internal'][-1][1] = apply_extensions('input', text, state, is_chat=True)
+    history['internal'][-1][1] = text
     return history
 
 
@@ -389,7 +376,7 @@ def start_new_chat(state):
         greeting = replace_character_names(state['greeting'], state['name1'], state['name2'])
         if greeting != '':
             history['internal'] += [['<|BEGIN-VISIBLE-CHAT|>', greeting]]
-            history['visible'] += [['', apply_extensions('output', greeting, state, is_chat=True)]]
+            history['visible'] += [['', greeting]]
 
     unique_id = datetime.now().strftime('%Y%m%d-%H-%M-%S')
     save_history(history, unique_id, state['character_menu'], state['mode'])

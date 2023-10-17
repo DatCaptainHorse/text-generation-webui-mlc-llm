@@ -3,7 +3,6 @@ from pathlib import Path
 import yaml
 
 from modules import utils
-from modules.text_generation import get_encoded_length
 
 
 def load_prompt(fname):
@@ -45,7 +44,6 @@ def load_instruction_prompt_simple(fname):
 
 def count_tokens(text):
     try:
-        tokens = get_encoded_length(text)
-        return str(tokens)
+        return text
     except:
         return '0'

@@ -2,7 +2,6 @@ import copy
 from pathlib import Path
 
 import gradio as gr
-import torch
 import yaml
 
 from modules import shared
@@ -43,51 +42,7 @@ else:
 
 def list_model_elements():
     elements = [
-        'loader',
-        'filter_by_loader',
-        'cpu_memory',
-        'auto_devices',
-        'disk',
-        'cpu',
-        'bf16',
-        'load_in_8bit',
-        'trust_remote_code',
-        'use_fast',
-        'load_in_4bit',
-        'compute_dtype',
-        'quant_type',
-        'use_double_quant',
-        'wbits',
-        'groupsize',
-        'model_type',
-        'pre_layer',
-        'triton',
-        'desc_act',
-        'no_inject_fused_attention',
-        'no_inject_fused_mlp',
-        'no_use_cuda_fp16',
-        'disable_exllama',
-        'cfg_cache',
-        'threads',
-        'threads_batch',
-        'n_batch',
-        'no_mmap',
-        'mlock',
-        'mul_mat_q',
-        'n_gpu_layers',
-        'tensor_split',
-        'n_ctx',
-        'llama_cpp_seed',
-        'gpu_split',
-        'max_seq_len',
-        'compress_pos_emb',
-        'alpha_value',
-        'rope_freq_base',
-        'numa',
     ]
-
-    for i in range(torch.cuda.device_count()):
-        elements.append(f'gpu_memory_{i}')
 
     return elements
 
@@ -95,40 +50,11 @@ def list_model_elements():
 def list_interface_input_elements():
     elements = [
         'max_new_tokens',
-        'auto_max_new_tokens',
-        'max_tokens_second',
-        'seed',
         'temperature',
         'top_p',
-        'top_k',
-        'typical_p',
-        'epsilon_cutoff',
-        'eta_cutoff',
         'repetition_penalty',
-        'repetition_penalty_range',
-        'encoder_repetition_penalty',
-        'no_repeat_ngram_size',
-        'min_length',
-        'do_sample',
-        'penalty_alpha',
-        'num_beams',
-        'length_penalty',
-        'early_stopping',
-        'mirostat_mode',
-        'mirostat_tau',
-        'mirostat_eta',
-        'grammar_string',
-        'negative_prompt',
-        'guidance_scale',
         'add_bos_token',
-        'ban_eos_token',
-        'custom_token_bans',
-        'truncation_length',
-        'custom_stopping_strings',
-        'skip_special_tokens',
         'stream',
-        'tfs',
-        'top_a',
     ]
 
     # Chat elements

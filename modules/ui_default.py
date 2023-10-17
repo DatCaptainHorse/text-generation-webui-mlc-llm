@@ -1,10 +1,9 @@
 import gradio as gr
 
-from modules import logits, shared, ui, utils
+from modules import shared, ui, utils
 from modules.prompts import count_tokens, load_prompt
 from modules.text_generation import (
     generate_reply_wrapper,
-    get_token_ids,
     stop_everything_event
 )
 from modules.utils import gradio
@@ -97,8 +96,3 @@ def create_event_handlers():
         lambda: gr.update(visible=True), None, gradio('file_deleter'))
 
     shared.gradio['textbox-default'].change(lambda x: f"<span>{count_tokens(x)}</span>", gradio('textbox-default'), gradio('token-counter-default'), show_progress=False)
-    shared.gradio['get_logits-default'].click(
-        ui.gather_interface_values, gradio(shared.input_elements), gradio('interface_state')).then(
-        logits.get_next_logits, gradio('textbox-default', 'interface_state', 'use_samplers-default', 'logits-default'), gradio('logits-default', 'logits-default-previous'), show_progress=False)
-
-    shared.gradio['get_tokens-default'].click(get_token_ids, gradio('textbox-default'), gradio('tokens-default'), show_progress=False)

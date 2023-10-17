@@ -1,7 +1,6 @@
 import os
 import warnings
 
-import modules.one_click_installer_check
 from modules.block_requests import OpenMonkeyPatch, RequestBlocker
 from modules.logging_colors import logger
 
@@ -13,12 +12,7 @@ warnings.filterwarnings('ignore', category=UserWarning, message='Using the updat
 with RequestBlocker():
     import gradio as gr
 
-import matplotlib
-
-matplotlib.use('Agg')  # This fixes LaTeX rendering on some systems
-
 import json
-import os
 import sys
 import time
 from functools import partial
@@ -27,23 +21,18 @@ from threading import Lock
 
 import yaml
 
-import modules.extensions as extensions_module
 from modules import (
     chat,
     shared,
-    training,
     ui,
     ui_chat,
     ui_default,
     ui_file_saving,
-    ui_model_menu,
     ui_notebook,
     ui_parameters,
     ui_session,
     utils
 )
-from modules.extensions import apply_extensions
-from modules.LoRA import add_lora_to_model
 from modules.models import load_model
 from modules.models_settings import (
     get_fallback_settings,
@@ -66,19 +55,13 @@ def create_interface():
             auth.extend(x.strip() for line in file for x in line.split(',') if x.strip())
     auth = [tuple(cred.split(':')) for cred in auth]
 
-    # Import the extensions and execute their setup() functions
-    if shared.args.extensions is not None and len(shared.args.extensions) > 0:
-        extensions_module.load_extensions()
-
     # Force some events to be triggered on page load
     shared.persistent_interface_state.update({
-        'loader': shared.args.loader or 'Transformers',
         'mode': shared.settings['mode'],
         'character_menu': shared.args.character or shared.settings['character'],
         'instruction_template': shared.settings['instruction_template'],
         'prompt_menu-default': shared.settings['prompt-default'],
         'prompt_menu-notebook': shared.settings['prompt-notebook'],
-        'filter_by_loader': shared.args.loader or 'All'
     })
 
     if Path("cache/pfp_character.png").exists():
@@ -87,8 +70,6 @@ def create_interface():
     # css/js strings
     css = ui.css
     js = ui.js
-    css += apply_extensions('css')
-    js += apply_extensions('js')
 
     # Interface state elements
     shared.input_elements = ui.list_interface_input_elements()
@@ -114,8 +95,6 @@ def create_interface():
         ui_notebook.create_ui()
 
         ui_parameters.create_ui(shared.settings['preset'])  # Parameters tab
-        ui_model_menu.create_ui()  # Model tab
-        training.create_ui()  # Training tab
         ui_session.create_ui()  # Session tab
 
         # Generation events
@@ -126,7 +105,6 @@ def create_interface():
         # Other events
         ui_file_saving.create_event_handlers()
         ui_parameters.create_event_handlers()
-        ui_model_menu.create_event_handlers()
 
         # Interface launch events
         if shared.settings['dark_theme']:
@@ -137,8 +115,6 @@ def create_interface():
         shared.gradio['interface'].load(partial(ui.apply_interface_values, {}, use_persistent=True), None, gradio(ui.list_interface_input_elements()), show_progress=False)
         shared.gradio['interface'].load(chat.redraw_html, gradio(ui_chat.reload_arr), gradio('display'))
 
-        extensions_module.create_extensions_tabs()  # Extensions tabs
-        extensions_module.create_extensions_block()  # Extensions block
 
     # Launch the interface
     shared.gradio['interface'].queue(concurrency_count=64)
@@ -154,7 +130,6 @@ def create_interface():
             ssl_keyfile=shared.args.ssl_keyfile,
             ssl_certfile=shared.args.ssl_certfile
         )
-
 
 if __name__ == "__main__":
 
@@ -177,14 +152,12 @@ if __name__ == "__main__":
     shared.model_config['.*'] = get_fallback_settings()
     shared.model_config.move_to_end('.*', last=False)  # Move to the beginning
 
-    # Activate the extensions listed on settings.yaml
-    extensions_module.available_extensions = utils.get_available_extensions()
-    for extension in shared.settings['default_extensions']:
-        shared.args.extensions = shared.args.extensions or []
-        if extension not in shared.args.extensions:
-            shared.args.extensions.append(extension)
-
     available_models = utils.get_available_models()
+
+    # Require --model or --model-menu to be set
+    if shared.args.model is None and shared.args.model_menu is False:
+        logger.error('Please specify a model with --model or --model-menu')
+        sys.exit(0)
 
     # Model defined through --model
     if shared.args.model is not None:
@@ -220,9 +193,7 @@ if __name__ == "__main__":
         update_model_parameters(model_settings, initial=True)  # hijacking the command-line arguments
 
         # Load the model
-        shared.model, shared.tokenizer = load_model(model_name)
-        if shared.args.lora:
-            add_lora_to_model(shared.args.lora)
+        shared.model = load_model(model_name)
 
     shared.generation_lock = Lock()
 

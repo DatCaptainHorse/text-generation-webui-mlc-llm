@@ -3,7 +3,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-from modules import github, shared
+from modules import shared
 from modules.logging_colors import logger
 
 
@@ -71,7 +71,7 @@ def natural_keys(text):
 
 
 def get_available_models():
-    model_list = ['None']
+    model_list = []
     for item in list(Path(f'{shared.args.model_dir}/').glob('*')):
         if not item.name.endswith(('.txt', '-np', '.pt', '.json', '.yaml', '.py')) and 'llama-tokenizer' not in item.name:
             model_list.append(re.sub('.pth$', '', item.name))
@@ -104,16 +104,6 @@ def get_available_instruction_templates():
         paths = (x for x in Path(path).iterdir() if x.suffix in ('.json', '.yaml', '.yml'))
 
     return ['None'] + sorted(set((k.stem for k in paths)), key=natural_keys)
-
-
-def get_available_extensions():
-    extensions = sorted(set(map(lambda x: x.parts[1], Path('extensions').glob('*/script.py'))), key=natural_keys)
-    extensions = [v for v in extensions if v not in github.new_extensions]
-    return extensions
-
-
-def get_available_loras():
-    return ['None'] + sorted([item.name for item in list(Path(shared.args.lora_dir).glob('*')) if not item.name.endswith(('.txt', '-np', '.pt', '.json'))], key=natural_keys)
 
 
 def get_datasets(path: str, ext: str):
